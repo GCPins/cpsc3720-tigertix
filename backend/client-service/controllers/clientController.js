@@ -1,4 +1,4 @@
-const { getEvents } = require('../models/model');
+const { getEvents } = require('../models/clientModel.js');
 
 const listEvents = (req, res) => {
   const events = getEvents();
