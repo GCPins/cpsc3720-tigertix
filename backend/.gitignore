@@ -24,3 +24,5 @@ yarn-error.log*
 
 # database
 ./shared-db/*.sqlite
+*.sqlite
+*/*.sqlite
