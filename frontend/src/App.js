@@ -25,9 +25,9 @@ function App() {
         const err = await res.json().catch(() => ({}));
         alert('Purchase failed: ' + (err.error || res.statusText));
       } else {
-        // refresh events
-  const updated = await fetch('http://localhost:6001/api/events').then(r => r.json());
-        setEvents(updated);
+        // use the updated event returned by the server to update local state
+        const updatedEvent = await res.json();
+        setEvents((prev) => prev.map((ev) => (ev.id === updatedEvent.id ? updatedEvent : ev)));
       }
     } catch (e) {
       console.error(e);
@@ -44,9 +44,13 @@ function App() {
         {events.map((event) => (
           <li key={event.id}>
             {event.name} - {event.date}{' '}
-            <button onClick={() => buyTicket(event.id)} disabled={loadingId===event.id}>
-              {loadingId===event.id ? 'Purchasing...' : 'Buy Ticket'}
-            </button>
+                {event.capacity > 0 ? (
+                  <button onClick={() => buyTicket(event.id)} disabled={loadingId===event.id}>
+                    {loadingId===event.id ? 'Purchasing...' : 'Buy Ticket'}
+                  </button>
+                ) : (
+                  <span style={{ color: '#888', fontStyle: 'italic' }}>Sold out</span>
+                )}
           </li>
         ))}
       </ul>
