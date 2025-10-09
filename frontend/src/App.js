@@ -5,14 +5,36 @@ function App() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/events')
+    fetch('http://localhost:6001/api/events')
       .then((res) => res.json() )
       .then((data) => setEvents(data) )
       .catch((err) => console.error(err) );
   }, []);
 
-  const buyTicket = (eventName) => {
-    alert(`Ticket purchased for: ${eventName}`);
+  const [loadingId, setLoadingId] = useState(null);
+
+  const buyTicket = async (eventId) => {
+    setLoadingId(eventId);
+    try {
+      const res = await fetch(`http://localhost:6001/api/events/${eventId}/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: 1 })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert('Purchase failed: ' + (err.error || res.statusText));
+      } else {
+        // refresh events
+  const updated = await fetch('http://localhost:6001/api/events').then(r => r.json());
+        setEvents(updated);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error during purchase');
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   return (
@@ -22,7 +44,9 @@ function App() {
         {events.map((event) => (
           <li key={event.id}>
             {event.name} - {event.date}{' '}
-            <button onClick={() => buyTicket(event.name)}>Buy Ticket</button>
+            <button onClick={() => buyTicket(event.id)} disabled={loadingId===event.id}>
+              {loadingId===event.id ? 'Purchasing...' : 'Buy Ticket'}
+            </button>
           </li>
         ))}
       </ul>
