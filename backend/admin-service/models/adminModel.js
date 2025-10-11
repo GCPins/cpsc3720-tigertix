@@ -3,7 +3,8 @@ const DB_FILE = path.join(__dirname, '..', '..', 'shared-db/database.sqlite');
 const db = require('better-sqlite3')(DB_FILE);
 
 /** 
- * Creates a new event in the database
+ * Creates a new event with the provided details in the database
+ * 
  * @param {Object} eventData - A JSON object containing the event details: name (string), date (a string, but in YYYY-MM-DD format), location (also a string), capacity (a non-negative number)
  * 
  * @returns {Object} The newly created event JSON object with its ID (and previously provided details)

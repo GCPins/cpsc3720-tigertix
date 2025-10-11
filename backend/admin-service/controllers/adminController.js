@@ -1,6 +1,13 @@
 const { makeEvent } = require('../models/adminModel.js');
 
-// super fancy and totally professional error handler
+/**
+ * Verifies the event data in the request
+ * 
+ * @param {Object} req - The API request object
+ * 
+ * @return {null} Returns null/nothing
+ * @throws Will throw an error if the API request is invalid (bad formatting, fields missing, wrong field types, etc.)
+ */
 const verifyEventData = (req) => {  
   if (!req.is('application/json') || !req.body) {
     const err = new Error("Request body must be in JSON format.");
