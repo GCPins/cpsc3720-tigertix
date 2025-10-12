@@ -12,9 +12,9 @@ const db = require('better-sqlite3')(DB_FILE);
 **/
 const makeEvent = async (eventData) => {
   try {
-    const sqlStmt = db.prepare('INSERT INTO Event (event_name, event_date, event_location, event_tickets_remaining) VALUES (?, ?, ?, ?)');
-    const sqlRes = sqlStmt.run(eventData.name, eventData.date, eventData.location, eventData.capacity);
-  return {id: sqlRes.lastInsertRowid, name: eventData.name, date: eventData.date, location: eventData.location, capacity: eventData.capacity};
+    const sqlStmt = db.prepare('INSERT INTO Event (event_name, event_datetime, event_location, event_tickets_remaining) VALUES (?, ?, ?, ?)');
+    const sqlRes = sqlStmt.run(eventData.name, eventData.datetime, eventData.location, eventData.capacity);
+  return {id: sqlRes.lastInsertRowid, name: eventData.name, datetime: eventData.datetime, location: eventData.location, capacity: eventData.capacity};
   } catch (err) {
     // re-throw the error for the controller to handle (gl, hf)
     throw(err);

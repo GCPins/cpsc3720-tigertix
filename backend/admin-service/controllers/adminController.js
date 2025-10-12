@@ -6,7 +6,8 @@ const { makeEvent } = require('../models/adminModel.js');
  * @param {Object} req - The API request object
  * 
  * @return {null} Returns null/nothing
- * @throws Will throw an error if the API request is invalid (bad formatting, fields missing, wrong field types, etc.)
+ * @throws Will throw an error if the API request is invalid (bad formatting, 
+ * fields missing, wrong field types, etc.)
  */
 const verifyEventData = (req) => {  
   if (!req.is('application/json') || !req.body) {
@@ -16,14 +17,16 @@ const verifyEventData = (req) => {
   }
 
   const data = req.body;
-  if (!data.name || !data.date || !data.location || data.capacity == null) {
-    const err = new Error("Event must include name, date, capacity, and location.");
+  if (!data.name || !data.datetime || !data.location || data.capacity == null) {
+    const err = new Error("Event must include name, datetime, capacity, and location.");
     err.statusCode = 400;
     throw(err);
   }
 
-  if (typeof data.name !== 'string' || typeof data.date !== 'string' || typeof data.location !== 'string' || typeof data.capacity !== 'number') {
-    const err = new Error("Event name, date, and location must be strings, capacity must be a number.");
+  if (typeof data.name !== 'string' || typeof data.datetime !== 'string' 
+    || typeof data.location !== 'string' || typeof data.capacity !== 'number') {
+    const err = new Error("Event name, datetime, and location must be strings, capacity" +
+      " must be a number.");
     err.statusCode = 400;
     throw(err);
   }
@@ -34,11 +37,18 @@ const verifyEventData = (req) => {
     throw(err);
   }
 
-  const d = new Date(data.date);
-  if (isNaN(d) || d.getFullYear() < 1000) {
-    const err = new Error("Event date must be a valid date (YYYY-MM-DD).");
+  const d = new Date(data.datetime);
+  if (isNaN(d.getTime())) {
+    const err = new Error("Event datetime column must be a valid ISO 8601 date/time string" +
+      " (e.g., '2025-10-12T18:30:00Z').");
     err.statusCode = 400;
-    throw(err);
+    throw err;
+  }
+
+  if (d < new Date()) {
+    const err = new Error("Event datetime column cannot be in the past.");
+    err.statusCode = 400;
+    throw err;
   }
 }
 
