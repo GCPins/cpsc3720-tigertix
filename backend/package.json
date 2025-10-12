@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./client-service/server.js & node ./admin-service/server.js",
+    "setup": "node ./admin-service/setup.js",
+    "clean": "rm -f ./shared-db/database.sqlite",
+    "all": "npm run clean && npm run setup && npm run start"
   },
   "keywords": [],
   "author": "",

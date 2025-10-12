@@ -43,7 +43,7 @@ function App() {
       <ul>
         {events.map((event) => (
           <li key={event.id}>
-            {event.name} - {event.date}{' '}
+            {event.name} - {event.datetime}{' '}
                 {event.capacity > 0 ? (
                   <button onClick={() => buyTicket(event.id)} disabled={loadingId===event.id}>
                     {loadingId===event.id ? 'Purchasing...' : 'Buy Ticket'}
