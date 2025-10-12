@@ -8,5 +8,5 @@ CREATE TABLE Event (
     event_name TEXT NOT NULL,
     event_date DATE NOT NULL,
     event_location TEXT NOT NULL,
-    event_capacity INTEGER --ticket capacity
+    event_tickets_remaining INTEGER NOT NULL
 );
