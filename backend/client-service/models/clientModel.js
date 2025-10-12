@@ -16,7 +16,8 @@ try {
 const ensureSchema = () => {
   if (!db) return false;
   try {
-    const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='Event'").get();
+    const row = db.prepare("SELECT name FROM sqlite_master WHERE \
+      type='table' AND name='Event'").get();
     if (!row) {
       if (fs.existsSync(INIT_SQL)) {
         const sql = fs.readFileSync(INIT_SQL, 'utf8');
@@ -37,7 +38,8 @@ const getEvents = () => {
   const ok = ensureSchema();
   if (!ok) throw new Error('Database schema not initialized');
   try {
-    const stmt = db.prepare('SELECT event_id as id, event_name as name, event_date as date, event_location as location, event_capacity as capacity FROM Event');
+    const stmt = db.prepare('SELECT event_id as id, event_name as name, event_date as date, \
+      event_location as location, event_capacity as capacity FROM Event');
     return stmt.all();
   } catch (e) {
     throw new Error('Database error while fetching events');
@@ -50,12 +52,20 @@ const purchaseTickets = (eventId, qty) => {
   if (!ok) return Promise.resolve({ success: false, message: 'Database schema not initialized' });
 
   const txn = db.transaction((id, q) => {
-    const selectStmt = db.prepare('SELECT event_id as id, event_name as name, event_date as date, event_location as location, event_capacity as capacity FROM Event WHERE event_id = ?');
+    const selectStmt = db.prepare('SELECT event_id as id, event_name as name, event_date as date, \
+      event_location as location, event_capacity as capacity FROM Event WHERE event_id = ?');
     const ev = selectStmt.get(id);
-    if (!ev) return { success: false, message: 'Event not found' };
-    if (ev.capacity === null || ev.capacity === undefined) return { success: false, message: 'Event does not track capacity' };
-    if (ev.capacity < q) return { success: false, message: 'Not enough tickets available' };
-    const updateStmt = db.prepare('UPDATE Event SET event_capacity = event_capacity - ? WHERE event_id = ?');
+    if (!ev) { 
+      return { success: false, message: 'Event not found' };
+    }
+    if (ev.capacity === null || ev.capacity === undefined) { 
+      return { success: false, message: 'Event does not track capacity' }; 
+    }
+    if (ev.capacity < q) { 
+      return { success: false, message: 'Not enough tickets available' };
+    }
+    const updateStmt = db.prepare('UPDATE Event SET event_capacity = event_capacity - ? \
+      WHERE event_id = ?');
     updateStmt.run(q, id);
     const updated = selectStmt.get(id);
     return { success: true, event: updated };
