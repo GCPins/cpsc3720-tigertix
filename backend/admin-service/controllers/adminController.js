@@ -39,8 +39,8 @@ const verifyEventData = (req) => {
 
   const d = new Date(data.datetime);
   if (isNaN(d.getTime())) {
-    const err = new Error("Event datetime column must be a valid ISO 8601 date/time string" +
-      " (e.g., '2025-10-12T18:30:00Z').");
+    const err = new Error("Event datetime column must be a valid ISO 8601 date + time" +
+      " (optional, but recommend) string (e.g., '2025-10-12T18:30:00Z').");
     err.statusCode = 400;
     throw err;
   }
