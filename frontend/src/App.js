@@ -2,6 +2,20 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 
 /**
+ * Returns the location of the event or a placeholder if none is provided.
+ *
+ * @param {string} location - The location (as a string) for the event.
+ * @returns {string} The formatted location string.
+ */
+const formatLocation = (location) => {
+  if (!location) {
+    return 'Location TBD';
+  }
+
+  return location;
+}
+
+/**
  * formatDatetime
  * Purpose: Safely convert an event datetime string into a user-friendly label.
  * @param {string} rawDatetime - Datetime string returned by the API.
@@ -45,7 +59,8 @@ const EventCard = ({ event, onPurchase, isLoading }) => {
     >
       <header className="event-card__header">
         <h3 className="event-card__title">{event.name}</h3>
-        <p className="event-card__datetime">{formatDatetime(event.datetime)}</p>
+        <p className="event-card__datetime">⏱︎ {formatDatetime(event.datetime)}</p>
+        <p className="event-card__location">⚲ {formatLocation(event.location)}</p>
       </header>
 
       <p className="event-card__availability">

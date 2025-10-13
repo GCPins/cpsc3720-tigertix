@@ -131,7 +131,7 @@
   color: #111827;
 }
 
-.event-card__datetime {
+.event-card__datetime, .event-card__location {
   margin: 0;
   color: #475569;
   font-size: 0.98rem;
