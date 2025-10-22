@@ -27,6 +27,98 @@ const formatDatetime = (rawDatetime) => {
 };
 
 /**
+ * VoiceRecorder
+ * Purpose: Capture voice input, play a short beep before recording, and allow manual stop.
+ */
+const VoiceRecorder = () => {
+  const [listening, setListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const recognitionRef = React.useRef(null);
+
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Speech Recognition not supported in this browser.');
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.lang = 'en-US';
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.maxAlternatives = 1;
+
+    recognitionRef.current.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      setTranscript(text);
+      console.log('Recognized:', text);
+    };
+
+    recognitionRef.current.onerror = (err) => {
+      console.error('Speech recognition error:', err);
+      alert('Speech recognition error: ' + err.error);
+      setListening(false);
+    };
+
+    recognitionRef.current.onend = () => {
+      // Only reset if we didn’t manually stop it
+      setListening(false);
+    };
+  }, []);
+
+  const playBeep = () => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.2);
+  };
+
+  const toggleRecording = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    if (!listening) {
+      // Start listening
+      playBeep();
+      setTranscript('');
+      recognition.start();
+      setListening(true);
+    } else {
+      // Stop listening manually
+      recognition.stop();
+      setListening(false);
+    }
+  };
+
+  return (
+    <div className="voice-container">
+      <button
+        type="button"
+        onClick={toggleRecording}
+        className="voice-btn"
+        aria-busy={listening}
+      >
+        {listening ? '🛑 Stop Recording' : '🎤 Start Recording'}
+      </button>
+
+      {transcript && (
+        <p className="recognized-text" aria-live="polite">
+          You said: "{transcript}"
+        </p>
+      )}
+    </div>
+  );
+};
+
+
+
+/**
  * EventCard
  * Purpose: Present an event's key details and purchase controls in a styled card.
  * @param {Object} props - Component properties.
@@ -211,6 +303,11 @@ function App() {
               ))}
             </div>
           )}
+          {/* Voice Input Section */}
+        <section className="voice-input-section">
+          <h2>Voice Assistant</h2>
+          <VoiceRecorder />
+        </section>
         </section>
       </main>
     </div>
