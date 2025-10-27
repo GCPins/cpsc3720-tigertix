@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 
+let modalOpenedOnce = false;
+
 /**
  * Returns the location of the event or a placeholder if none is provided.
  *
@@ -165,19 +167,22 @@ const ChatbotWidget = () => {
   useEffect(() => {
     if (!open) return;
 
-    addMessage('bot', '👋 Hi there! Welcome to TigerTix Assistant.');
-    addMessage('bot', 'Here are the currently available events:');
-    if (events.length > 0) {
-      events.forEach((ev) => {
-        addMessage(
-          'bot',
-          `🎟️ ${ev.name} — ${ev.capacity} tickets remaining on ${new Date(
-            ev.datetime
-          ).toLocaleDateString()}`
-        );
-      });
-    } else {
-      addMessage('bot', 'No events available right now. Check back soon!');
+    if (!modalOpenedOnce) {
+      addMessage('bot', '👋 Hi there! Welcome to TigerTix Assistant.');
+      addMessage('bot', 'Here are the currently available events:');
+      if (events.length > 0) {
+        events.forEach((ev) => {
+          addMessage(
+            'bot',
+            `🎟️ ${ev.name} — ${ev.capacity} tickets remaining on ${new Date(
+              ev.datetime
+            ).toLocaleDateString()}`
+          );
+        });
+      } else {
+        addMessage('bot', 'No events available right now. Check back soon!');
+      }
+      modalOpenedOnce = true;
     }
   }, [open, events]);
 
