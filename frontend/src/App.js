@@ -41,45 +41,92 @@ const formatDatetime = (rawDatetime) => {
 };
 
 /**
- * VoiceRecorder
- * Purpose: Capture voice input, play a short beep before recording, and allow manual stop.
+ * ChatbotWidget
+ * Floating chat assistant with voice input, greetings, events,
+ * and placeholder for LLM parse & reply APIs on port 7001.
  */
-const VoiceRecorder = () => {
+const ChatbotWidget = () => {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
   const [listening, setListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [events, setEvents] = useState([]);
   const recognitionRef = React.useRef(null);
 
+  // --- Load events ---
   useEffect(() => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert('Speech Recognition not supported in this browser.');
-      return;
-    }
+    fetch('http://localhost:6001/api/events')
+      .then((res) => res.json())
+      .then((data) => setEvents(Array.isArray(data) ? data : []))
+      .catch((err) => console.error('Failed to load events:', err));
+  }, []);
+
+  // --- Setup SpeechRecognition ---
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
 
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.lang = 'en-US';
-    recognitionRef.current.interimResults = false;
-    recognitionRef.current.maxAlternatives = 1;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-    recognitionRef.current.onresult = (event) => {
+    recognition.onresult = async (event) => {
       const text = event.results[0][0].transcript;
-      setTranscript(text);
-      console.log('Recognized:', text);
+      addMessage('user', text);
+
+      // --- Placeholder for LLM parse POST ---
+      /*
+      try {
+        const parseRes = await fetch('http://localhost:7001/api/llm/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const parseData = await parseRes.json();
+        console.log('Parsed user command:', parseData); // { event, tickets, intent }
+      } catch (err) {
+        console.error('LLM parse API error:', err);
+      }
+      */
+
+      // --- Placeholder for LLM reply GET ---
+      /*
+      try {
+        const replyRes = await fetch(
+          `http://localhost:7001/api/llm/reply?text=${encodeURIComponent(text)}`
+        );
+        if (replyRes.ok) {
+          const replyData = await replyRes.json(); // { reply: "..." }
+          addMessage('bot', replyData.reply);
+          speakText(replyData.reply);
+        } else {
+          addMessage('bot', "Sorry, couldn't get a reply from assistant.");
+          speakText("Sorry, couldn't get a reply from assistant.");
+        }
+      } catch (err) {
+        console.error('LLM reply API error:', err);
+        addMessage('bot', 'Error contacting assistant.');
+        speakText('Error contacting assistant.');
+      }
+      */
+
+      // --- Hard-coded reply for now ---
+      const hardCodedReply = `🤖 Got it! You said: "${text}".`;
+      addMessage('bot', hardCodedReply);
     };
 
-    recognitionRef.current.onerror = (err) => {
+    recognition.onerror = (err) => {
       console.error('Speech recognition error:', err);
       alert('Speech recognition error: ' + err.error);
       setListening(false);
     };
 
-    recognitionRef.current.onend = () => {
-      // Only reset if we didn’t manually stop it
-      setListening(false);
-    };
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
   }, []);
 
+  // --- Play beep ---
   const playBeep = () => {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
@@ -93,43 +140,88 @@ const VoiceRecorder = () => {
     oscillator.stop(ctx.currentTime + 0.2);
   };
 
+  // --- Toggle recording ---
   const toggleRecording = () => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
-    if (!listening) {
-      // Start listening
-      playBeep();
-      setTranscript('');
-      recognition.start();
-      setListening(true);
-    } else {
-      // Stop listening manually
+    if (listening) {
       recognition.stop();
       setListening(false);
+    } else {
+      playBeep();
+      recognition.start();
+      setListening(true);
     }
   };
 
-  return (
-    <div className="voice-container">
-      <button
-        type="button"
-        onClick={toggleRecording}
-        className="voice-btn"
-        aria-busy={listening}
-      >
-        {listening ? '🛑 Stop Recording' : '🎤 Start Recording'}
-      </button>
+  // --- Add message helper ---
+  const addMessage = (sender, text) => {
+    setMessages((prev) => [...prev, { sender, text }]);
+    if (sender === 'bot') speakText(text);
+  };
 
-      {transcript && (
-        <p className="recognized-text" aria-live="polite">
-          You said: "{transcript}"
-        </p>
+  // --- Greet when opened ---
+  useEffect(() => {
+    if (!open) return;
+
+    addMessage('bot', '👋 Hi there! Welcome to TigerTix Assistant.');
+    addMessage('bot', 'Here are the currently available events:');
+    if (events.length > 0) {
+      events.forEach((ev) => {
+        addMessage(
+          'bot',
+          `🎟️ ${ev.name} — ${ev.capacity} tickets remaining on ${new Date(
+            ev.datetime
+          ).toLocaleDateString()}`
+        );
+      });
+    } else {
+      addMessage('bot', 'No events available right now. Check back soon!');
+    }
+  }, [open, events]);
+
+  // --- Text-to-speech ---
+  const speakText = (text) => {
+    if (!('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.lang = 'en-US';
+    window.speechSynthesis.speak(utterance);
+  };
+
+  return (
+    <div className="chatbot-widget">
+      {open && (
+        <div className="chat-window">
+          <div className="chat-messages">
+            {messages.map((msg, idx) => (
+              <p key={idx} className={msg.sender === 'user' ? 'user-msg' : 'bot-msg'}>
+                {msg.text}
+              </p>
+            ))}
+            {listening && <p className="system-msg" aria-live="polite">Listening...</p>}
+          </div>
+
+          <div className="chat-controls">
+            <button className="mic-btn" onClick={toggleRecording}>
+              {listening ? '🛑 Stop' : '🎤 Speak'}
+            </button>
+          </div>
+        </div>
       )}
+
+      <button
+        className="chatbot-toggle-btn"
+        onClick={() => setOpen(!open)}
+        aria-label="Toggle chatbot"
+      >
+        💬
+      </button>
     </div>
   );
 };
-
 
 
 /**
@@ -318,12 +410,8 @@ function App() {
               ))}
             </div>
           )}
-          {/* Voice Input Section */}
-        <section className="voice-input-section">
-          <h2>Voice Assistant</h2>
-          <VoiceRecorder />
         </section>
-        </section>
+        <ChatbotWidget />
       </main>
     </div>
   );
