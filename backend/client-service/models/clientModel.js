@@ -1,3 +1,52 @@
+require('dotenv').config({ path: '../.env' }); 
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+const { GoogleGenAI } = require('@google/genai');
+const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+const llmModel = "gemini-2.5-flash-lite";
+const llmPrompt = `
+"You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
+- If the user's request is coherent and they have request a valid number of tickets for an existing event, respond with this JSON output:
+  > { 'event': { 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
+- If the user's request is incoherent, missing the event name, quantity of tickets, or invalid, respond with this JSON output:
+  > { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
+
+NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
+
+Here are the events that are available, and the max number of tickets that can be reserved:\n`;
+const llmConf = {
+  "type": "OBJECT",
+  "description": "A JSON object containing either a successful event booking OR an error message.",
+  "properties": {
+    "event": {
+      "type": "OBJECT",
+      "description": "Populated on a successful request. Contains the event name and ticket quantity.",
+      "nullable": true,
+      "properties": {
+        "name": {
+          "type": "STRING",
+          "description": "The name of the event the user wants to book."
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "description": "The number of tickets requested."
+        }
+      }
+    },
+    "error": {
+      "type": "OBJECT",
+      "description": "Populated on an invalid request. Contains a user-facing error message.",
+      "nullable": true,
+      "properties": {
+        "msg": {
+          "type": "STRING",
+          "description": "A user-facing message explaining why the request was incoherent or invalid."
+        }
+      }
+    }
+  }
+}
+
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
@@ -135,4 +184,36 @@ const purchaseTickets = (eventId, qty) => {
   }
 };
 
-module.exports = { getEvents, purchaseTickets };
+const generateResponse = async (userMsg) => {
+  try {
+    const events = fetch("http://localhost:6001/api/events").then((res) => { return res.json() });
+    const eventsStr = JSON.stringify(events);  
+
+    const request = llmPrompt + eventsStr + userMsg;
+
+    const response = await ai.models.generateContent({
+      model: llmModel,
+      contents: request,
+      config: llmConf,
+    });
+    
+    return response;
+  } catch (err) {
+    throw(err);
+  }
+}
+
+const processLlm = async (msg) => {
+  try {
+    // should accept RAW/txt, not a structured json input!
+    const userMsg = msg.toString();
+
+    const llmResponse = await generateResponse(userMsg);
+
+    return llmResponse;
+  } catch (err) {
+    throw(err);
+  }
+}
+
+module.exports = { getEvents, purchaseTickets, processLlm };

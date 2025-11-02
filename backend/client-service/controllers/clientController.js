@@ -1,4 +1,4 @@
-const { getEvents, purchaseTickets: modelPurchaseTickets } = require('../models/clientModel.js');
+const { getEvents, purchaseTickets: modelPurchaseTickets, processLlm } = require('../models/clientModel.js');
 
 /**
  * @function listEvents
@@ -54,5 +54,15 @@ const purchaseTickets = async (req, res, next) => {
     next(e);
   }
 };
+ 
+const parseLlm = async(req, res, next) => {
+  try {
+    const llmResponse = await processLlm(req.body);
 
-module.exports = { listEvents, purchaseTickets };
+    res.status(200).json(llmResponse);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listEvents, purchaseTickets, parseLlm };
