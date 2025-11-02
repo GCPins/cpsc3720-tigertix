@@ -57,7 +57,7 @@ const purchaseTickets = async (req, res, next) => {
  
 const parseLlm = async(req, res, next) => {
   try {
-    const llmResponse = await processLlm(req.body);
+    const llmResponse = await processLlm(req.body.message);
 
     res.status(200).json(llmResponse);
   } catch (err) {

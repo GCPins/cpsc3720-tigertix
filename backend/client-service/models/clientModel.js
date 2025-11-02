@@ -1,7 +1,14 @@
-require('dotenv').config({ path: '../.env' }); 
+const path = require('path');
+const fs = require('fs');
+
+require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-const { GoogleGenAI } = require('@google/genai');
+console.log("GEMINI_KEY:", GEMINI_KEY ? "FOUND" : "NOT FOUND - MUST SET ENV VARIABLE!");
+
+const fetch = require('node-fetch').default;
+
+const { GoogleGenAI, Type } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 const llmModel = "gemini-2.5-flash-lite";
 const llmPrompt = `
@@ -14,41 +21,7 @@ const llmPrompt = `
 NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
 
 Here are the events that are available, and the max number of tickets that can be reserved:\n`;
-const llmConf = {
-  "type": "OBJECT",
-  "description": "A JSON object containing either a successful event booking OR an error message.",
-  "properties": {
-    "event": {
-      "type": "OBJECT",
-      "description": "Populated on a successful request. Contains the event name and ticket quantity.",
-      "nullable": true,
-      "properties": {
-        "name": {
-          "type": "STRING",
-          "description": "The name of the event the user wants to book."
-        },
-        "quantity": {
-          "type": "INTEGER",
-          "description": "The number of tickets requested."
-        }
-      }
-    },
-    "error": {
-      "type": "OBJECT",
-      "description": "Populated on an invalid request. Contains a user-facing error message.",
-      "nullable": true,
-      "properties": {
-        "msg": {
-          "type": "STRING",
-          "description": "A user-facing message explaining why the request was incoherent or invalid."
-        }
-      }
-    }
-  }
-}
 
-const path = require('path');
-const fs = require('fs');
 const Database = require('better-sqlite3');
 
 // Path to shared SQLite database and initialization script.
@@ -186,18 +159,130 @@ const purchaseTickets = (eventId, qty) => {
 
 const generateResponse = async (userMsg) => {
   try {
-    const events = fetch("http://localhost:6001/api/events").then((res) => { return res.json() });
-    const eventsStr = JSON.stringify(events);  
+    const events = await fetch("http://localhost:6001/api/events").then((res) => { return res.json() });
+    const availEvents = JSON.stringify(events);  
 
-    const request = llmPrompt + eventsStr + userMsg;
+    const request = userMsg;
 
-    const response = await ai.models.generateContent({
-      model: llmModel,
-      contents: request,
-      config: llmConf,
-    });
+  //   const llmConfig = {
+  //     thinkingConfig: {
+  //       thinkingBudget: 0,
+  //     },
+  //     imageConfig: {
+  //       imageSize: '1K',
+  //     },
+  //     responseMimeType: 'application/json',
+  //     responseSchema: {
+  //       type: Type.OBJECT,
+  //       properties: {
+  //         event: {
+  //           type: Type.OBJECT,
+  //           properties: {
+  //             name: {
+  //               type: Type.STRING,
+  //             },
+  //             quantity: {
+  //               type: Type.INTEGER,
+  //             },
+  //           },
+  //         },
+  //         error: {
+  //           type: Type.OBJECT,
+  //           properties: {
+  //             msg: {
+  //               type: Type.STRING,
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     systemInstruction: [
+  //         {
+  //           text: `You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
+
+  //     If the user's request is coherent and they have request a valid number of tickets for an existing event, respond with this JSON output:
+
+  //         { 'event': { 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
+
+  //     If the user's request is incoherent, missing the event name, quantity of tickets, or invalid, respond with this JSON output:
+
+  //         { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
+
+  // NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
+
+  // Here are the events that are available, and the max number of tickets that can be reserved:
+  //         ${availEvents}`,
+  //         }
+  //     ],
+  //   };
+
+  //   const response = await ai.models.generateContent({
+  //     model: llmModel,
+  //     contents: {
+  //       role: 'user',
+  //       parts: [
+  //         {
+  //           text: request
+  //         },
+  //       ], 
+  //     },
+  //     config: llmConfig,
+  //   });
     
-    return response;
+      const res2 = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: request,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            event: {
+              type: Type.OBJECT,
+              properties: {
+                name: {
+                  type: Type.STRING,
+                },
+                quantity: {
+                  type: Type.INTEGER,
+                },
+              },
+            },
+            error: {
+              type: Type.OBJECT,
+              properties: {
+                msg: {
+                  type: Type.STRING,
+                },
+              },
+            },
+          },
+        },
+        systemInstruction: [
+            {
+              text: `You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
+
+        If the user's request is coherent and they have request a valid number of tickets for an existing event, respond with this JSON output:
+
+            { 'event': { 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
+
+        If the user's request is incoherent, missing the event name, quantity of tickets, or invalid, respond with this JSON output:
+
+            { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
+
+    NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
+
+    Here are the events that are available, and the max number of tickets that can be reserved:
+            ${availEvents}`,
+            }
+        ],
+      },
+    });
+
+    console.log(res2.text);
+
+
+    return res2.text;
   } catch (err) {
     throw(err);
   }
