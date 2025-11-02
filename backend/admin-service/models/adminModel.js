@@ -1,5 +1,10 @@
-const { GoogleGenAI } = require('genai');
-const ai = new GoogleGenAI({});
+// MUST SET ENV VAR: GEMINI_API_KEY
+// const { GoogleGenAI } = require('genai');
+require('dotenv').config(); 
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+import { GoogleGenAI } from "@google/genai";
+const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 const llmModel = "gemini-2.5-flash-lite";
 const llmPrompt = `
 "You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
@@ -37,7 +42,10 @@ const makeEvent = async (eventData) => {
 
 const generateResponse = async (userMsg) => {
   try {
-    const request = llmPrompt + userMsg;
+    const events = fetch("http://localhost:6001/api/events").then((res) => { return res.json() });
+    const eventsStr = JSON.stringify(events);  
+
+    const request = llmPrompt + eventsStr + userMsg;
 
     const response = await ai.models.generateContent({
       model: llmModel,
