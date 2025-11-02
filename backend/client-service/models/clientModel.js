@@ -163,124 +163,59 @@ const generateResponse = async (userMsg) => {
     const availEvents = JSON.stringify(events);  
 
     const request = userMsg;
-
-  //   const llmConfig = {
-  //     thinkingConfig: {
-  //       thinkingBudget: 0,
-  //     },
-  //     imageConfig: {
-  //       imageSize: '1K',
-  //     },
-  //     responseMimeType: 'application/json',
-  //     responseSchema: {
-  //       type: Type.OBJECT,
-  //       properties: {
-  //         event: {
-  //           type: Type.OBJECT,
-  //           properties: {
-  //             name: {
-  //               type: Type.STRING,
-  //             },
-  //             quantity: {
-  //               type: Type.INTEGER,
-  //             },
-  //           },
-  //         },
-  //         error: {
-  //           type: Type.OBJECT,
-  //           properties: {
-  //             msg: {
-  //               type: Type.STRING,
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //     systemInstruction: [
-  //         {
-  //           text: `You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
-
-  //     If the user's request is coherent and they have request a valid number of tickets for an existing event, respond with this JSON output:
-
-  //         { 'event': { 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
-
-  //     If the user's request is incoherent, missing the event name, quantity of tickets, or invalid, respond with this JSON output:
-
-  //         { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
-
-  // NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
-
-  // Here are the events that are available, and the max number of tickets that can be reserved:
-  //         ${availEvents}`,
-  //         }
-  //     ],
-  //   };
-
-  //   const response = await ai.models.generateContent({
-  //     model: llmModel,
-  //     contents: {
-  //       role: 'user',
-  //       parts: [
-  //         {
-  //           text: request
-  //         },
-  //       ], 
-  //     },
-  //     config: llmConfig,
-  //   });
     
-      const res2 = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: request,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            event: {
-              type: Type.OBJECT,
-              properties: {
-                name: {
-                  type: Type.STRING,
-                },
-                quantity: {
-                  type: Type.INTEGER,
-                },
+    const res2 = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: request,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          event: {
+            type: Type.OBJECT,
+            properties: {
+              id: {
+                type: Type.INTEGER,
+              },
+              name: {
+                type: Type.STRING,
+              },
+              quantity: {
+                type: Type.INTEGER,
               },
             },
-            error: {
-              type: Type.OBJECT,
-              properties: {
-                msg: {
-                  type: Type.STRING,
-                },
+          },
+          error: {
+            type: Type.OBJECT,
+            properties: {
+              msg: {
+                type: Type.STRING,
               },
             },
           },
         },
-        systemInstruction: [
-            {
-              text: `You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
+      },
+      systemInstruction: [
+          {
+            text: `You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
 
-        If the user's request is coherent and they have request a valid number of tickets for an existing event, respond with this JSON output:
+      If the user's request is somewhat coherent and they have, in one way or the other, requested a valid number of tickets for an existing event, respond with this JSON output:
 
-            { 'event': { 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
+          { 'event': { 'id': EVENT_ID_HERE, 'name': 'EVENT NAME HERE', 'quantity': NUMBER_OF_TICKETS_HERE } }
 
-        If the user's request is incoherent, missing the event name, quantity of tickets, or invalid, respond with this JSON output:
+      If the user's request is incoherent or invalid, respond with this JSON output:
 
-            { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
+          { 'error': { 'msg': 'REASON FOR INVALID USER REQUEST HERE' } }
 
-    NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request both the number of tickets and event name in each request!).
+  NOTE THAT every response must exlusively be in the JSON format provided above - no extra fluff! For an "error" response, see the bullet point above and ensure that the "message" response is directed towards the user (the user must request enough information to ascertain which event - and how many tickets for that event - they wish to attend).
 
-    Here are the events that are available, and the max number of tickets that can be reserved:
-            ${availEvents}`,
-            }
+  Here are the events that are available, and the max number of tickets that can be reserved:
+          ${availEvents}`,
+          }
         ],
       },
     });
-
-    console.log(res2.text);
-
 
     return res2.text;
   } catch (err) {

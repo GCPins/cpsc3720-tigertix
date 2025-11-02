@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
+// const fetch = require('node-fetch').default;
 
 let modalOpenedOnce = false;
+let confirmationPending = false;
+let potentialEventId = -1;
+let potentialEventName = '';
+let potentialEventQuantity = 0;
 
 /**
  * Returns the location of the event or a placeholder if none is provided.
@@ -50,9 +55,12 @@ const formatDatetime = (rawDatetime) => {
 const ChatbotWidget = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [sending, setSending] = useState(false);
   const [listening, setListening] = useState(false);
   const [events, setEvents] = useState([]);
   const recognitionRef = React.useRef(null);
+  const messagesEndRef = React.useRef(null);
 
   // --- Load events ---
   useEffect(() => {
@@ -80,7 +88,7 @@ const ChatbotWidget = () => {
       // --- Placeholder for LLM parse POST ---
       /*
       try {
-        const parseRes = await fetch('http://localhost:7001/api/llm/parse', {
+        const parseRes = await fetch('http://localhost:6001/api/llm/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
@@ -89,27 +97,6 @@ const ChatbotWidget = () => {
         console.log('Parsed user command:', parseData); // { event, tickets, intent }
       } catch (err) {
         console.error('LLM parse API error:', err);
-      }
-      */
-
-      // --- Placeholder for LLM reply GET ---
-      /*
-      try {
-        const replyRes = await fetch(
-          `http://localhost:7001/api/llm/reply?text=${encodeURIComponent(text)}`
-        );
-        if (replyRes.ok) {
-          const replyData = await replyRes.json(); // { reply: "..." }
-          addMessage('bot', replyData.reply);
-          speakText(replyData.reply);
-        } else {
-          addMessage('bot', "Sorry, couldn't get a reply from assistant.");
-          speakText("Sorry, couldn't get a reply from assistant.");
-        }
-      } catch (err) {
-        console.error('LLM reply API error:', err);
-        addMessage('bot', 'Error contacting assistant.');
-        speakText('Error contacting assistant.');
       }
       */
 
@@ -151,7 +138,7 @@ const ChatbotWidget = () => {
       recognition.stop();
       setListening(false);
     } else {
-      playBeep();
+      playBeep(); 
       recognition.start();
       setListening(true);
     }
@@ -161,6 +148,86 @@ const ChatbotWidget = () => {
   const addMessage = (sender, text) => {
     setMessages((prev) => [...prev, { sender, text }]);
     if (sender === 'bot') speakText(text);
+  };
+
+  // --- Scroll chat to bottom when messages change ---
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  // --- Send a text message from user ---
+  // Use promise chaining to send message and handle response succinctly
+  const sendTextMessage = (ev) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    const text = (inputText || '').trim();
+    if (!text || sending) return;
+
+    addMessage('user', text);
+    setInputText('');
+    setSending(true);
+
+    if (confirmationPending) {
+      if (text.toLowerCase().includes('yes') || text.toLowerCase().includes('confirm')) {
+        // purchase confirmed, buy ticket(s) for event with ID = potentialEventId
+        // with ticket quantity = potentialEventQuantity
+        fetch(
+          `http://localhost:6001/api/events/${potentialEventId}/purchase`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantity: potentialEventQuantity }),
+          }
+        ).then((res) => {
+            addMessage('bot', 'Your reservation for ' + potentialEventQuantity + ' tickets to ' + potentialEventName + ' has been confirmed! Thank you for using TigerTix Assistant.');
+        });
+      } else {
+        addMessage('bot', 'Reservation not confirmed - please try again if you wish to book tickets.');
+      }
+      confirmationPending = false;
+      setSending(false);
+      return;
+    }
+
+    fetch('http://localhost:6001/api/llm/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    })
+      .then((res) =>
+        res
+          .json()
+          .catch(() => null)
+          .then((data) => ({ res, data }))
+      )
+      .then(({ res, data }) => {
+        data = JSON.parse(data);
+        let reply = 'Assistant unavailable.';
+        if (res && res.ok) {
+          if (data == null) reply = 'No reply from assistant.';
+          // else if (typeof data === 'string') reply = data;
+          // else if (typeof data.reply === 'string') reply = data.reply;
+          // else if (typeof data.message === 'string') reply = data.message;
+          else if (data.error) reply = JSON.stringify(data.error.msg).replaceAll('"', '');
+          else {
+            reply = "To confirm your reservation for " + JSON.stringify(data.event.quantity) + " tickets to " + JSON.stringify(data.event.name) + ", please respond with \"yes\" or \"confirm\"";
+            confirmationPending = true;
+            potentialEventId = data.event.id;
+            potentialEventName = data.event.name;
+            potentialEventQuantity = data.event.quantity;
+          }
+        } else if (res) {
+          // reply = (data && (data.error || data.message)) || `Assistant error: ${res.status}`;
+        }
+        
+        addMessage('bot', reply);
+      })
+      .catch((err) => {
+        console.error('LLM reply request failed:', err);
+        addMessage('bot', 'Assistant unavailable.');
+      })
+      .finally(() => setSending(false));
   };
 
   // --- Greet when opened ---
@@ -200,6 +267,19 @@ const ChatbotWidget = () => {
     <div className="chatbot-widget">
       {open && (
         <div className="chat-window">
+          <div className="chat-header">
+            <div className="chat-title">TigerTix Assistant</div>
+            <button
+              type="button"
+              className="mic-btn mic-btn--header"
+              onClick={toggleRecording}
+              aria-pressed={listening}
+              aria-label={listening ? 'Stop recording' : 'Start recording'}
+            >
+              {listening ? '🛑' : '🎤'}
+            </button>
+          </div>
+
           <div className="chat-messages">
             {messages.map((msg, idx) => (
               <p key={idx} className={msg.sender === 'user' ? 'user-msg' : 'bot-msg'}>
@@ -207,12 +287,24 @@ const ChatbotWidget = () => {
               </p>
             ))}
             {listening && <p className="system-msg" aria-live="polite">Listening...</p>}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="chat-controls">
-            <button className="mic-btn" onClick={toggleRecording}>
-              {listening ? '🛑 Stop' : '🎤 Speak'}
-            </button>
+            <form className="chat-input-form" onSubmit={sendTextMessage}>
+              <input
+                aria-label="Type a message"
+                className="chat-input"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                disabled={sending}
+                placeholder="Type a message..."
+              />
+              <button type="submit" className="send-btn" aria-label="Send message" disabled={sending}>
+                {sending ? 'Sending…' : '➤'}
+              </button>
+              {/* mic button moved to header to preserve layout on small screens */}
+            </form>
           </div>
         </div>
       )}

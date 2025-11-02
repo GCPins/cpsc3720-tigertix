@@ -287,17 +287,55 @@ a:focus-visible,
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   padding: 12px;
   width: 360px;
-  height: 480px;
+  max-width: calc(100vw - 40px);
+  /* Responsive height so widget fits small viewports */
+  max-height: 70vh;
   margin-bottom: 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 .chat-messages {
   overflow-y: auto;
-  flex-grow: 1;
+  flex: 1 1 auto;
+  /* allow shrinking so controls remain visible */
+  min-height: 0;
   margin-bottom: 10px;
+  padding-right: 6px;
+}
+
+.chat-controls {
+  /* keep controls sized and prevent them from stretching the window */
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 10px 6px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.chat-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mic-btn--header {
+  width: 46px;
+  height: 36px;
+  padding: 4px 6px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+}
+
+.mic-btn--header.listening {
+  background: #dc2626;
 }
 
 .chat-container {
@@ -317,20 +355,20 @@ a:focus-visible,
 
 .user-msg {
   align-self: flex-start;
-  text-align: left;
+  text-align: right;
   background: #6365f15e;
   color: #222;
   margin-right: auto; /* flexible spacing from right */
-  border-radius: 12px 12px 12px 4px;
+  border-radius: 12px 12px 4px 12px;
 }
 
 .bot-msg {
   align-self: flex-end;
-  text-align: right;
+  text-align: left;
   background: #f59e0b;
   color: #fff;
   margin-left: auto; /* flexible spacing from left */
-  border-radius: 12px 12px 4px 12px;
+  border-radius: 12px 12px 12px 4px;
 }
 
 
@@ -349,4 +387,59 @@ a:focus-visible,
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+}
+
+/* Chat input and send button styles */
+.chat-input-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.chat-input:focus {
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.12);
+  border-color: #6366f1;
+}
+
+.send-btn {
+  background: #111827;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.send-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Keep mic button compact when shown alongside input */
+.chat-input-form .mic-btn {
+  width: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.chat-messages p {
+  margin: 6px 0;
+}
+
+@media (max-width: 420px) {
+  .chat-window {
+    width: 300px;
+    height: 440px;
+    padding: 10px;
+  }
 }
