@@ -52,7 +52,7 @@ const formatDatetime = (rawDatetime) => {
  * Floating chat assistant with voice input, greetings, events,
  * and placeholder for LLM parse & reply APIs on port 7001.
  */
-const ChatbotWidget = () => {
+const ChatbotWidget = ( { setAppEvents } ) => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -179,9 +179,16 @@ const ChatbotWidget = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ quantity: potentialEventQuantity }),
           }
-        ).then((res) => {
+        ).then(async (res) => {
             addMessage('bot', 'Your reservation for ' + potentialEventQuantity + ' tickets to ' + potentialEventName + ' has been confirmed! Thank you for using TigerTix Assistant.');
         });
+        if (setAppEvents) {
+          setAppEvents((prevEvents) =>
+            prevEvents.map((ev) =>
+              ev.id === potentialEventId ? { ...ev, capacity: ev.capacity - potentialEventQuantity } : ev
+            )
+          );
+        }
       } else {
         addMessage('bot', 'Reservation not confirmed - please try again if you wish to book tickets.');
       }
@@ -508,7 +515,7 @@ function App() {
             </div>
           )}
         </section>
-        <ChatbotWidget />
+        <ChatbotWidget setAppEvents={setEvents} />
       </main>
     </div>
   );
