@@ -11,10 +11,17 @@ app.use('/api', routes);
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
   const status = err && err.statusCode ? err.statusCode : 500;
-  res.status(status).json({ error: err && err.message ? err.message : 'Internal Server Error' });
+  res
+    .status(status)
+    .json({ error: err && err.message ? err.message : 'Internal Server Error' });
 });
 
-const PORT = 6001;
-app.listen(PORT, () => {
-  console.log(`Client service running at http://localhost:${PORT}`)
-});
+// Export app for testing; only start server when run directly
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.CLIENT_PORT || 6001;
+  app.listen(PORT, () => {
+    console.log(`Client service running at http://localhost:${PORT}`);
+  });
+}

@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "node ./client-service/server.js & node ./admin-service/server.js",
     "setup": "node ./admin-service/setup.js",
     "seed": "node ./admin-service/seed.js",
@@ -22,5 +22,10 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"
+  }
+  ,
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }

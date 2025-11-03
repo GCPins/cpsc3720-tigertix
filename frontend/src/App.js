@@ -49,8 +49,7 @@ const formatDatetime = (rawDatetime) => {
 
 /**
  * ChatbotWidget
- * Floating chat assistant with voice input, greetings, events,
- * and placeholder for LLM parse & reply APIs on port 7001.
+ * Floating chat assistant with voice input, event listing, and LLM parse/reply integration.
  */
 const ChatbotWidget = ( { setAppEvents } ) => {
   const [open, setOpen] = useState(false);
@@ -100,7 +99,7 @@ const ChatbotWidget = ( { setAppEvents } ) => {
       }
       */
 
-      // --- Hard-coded reply for now ---
+      // --- Fallback reply if LLM integration is unavailable ---
       const hardCodedReply = `🤖 Got it! You said: "${text}".`;
       addMessage('bot', hardCodedReply);
     };

@@ -4,12 +4,15 @@ const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-console.log("GEMINI_KEY:", GEMINI_KEY ? "FOUND" : "NOT FOUND - MUST SET ENV VARIABLE!");
+console.log(
+  "GEMINI_KEY:",
+  GEMINI_KEY ? "FOUND" : "NOT FOUND - set the GEMINI_API_KEY environment variable."
+);
 
-const fetch = require('node-fetch').default;
-
-const { GoogleGenAI, Type } = require('@google/genai');
-const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+// LLM deps (node-fetch, @google/genai) are loaded lazily to avoid ESM parsing issues in tests
+let ai = null;
+let Type = null;
+let _fetch = null;
 const llmModel = "gemini-2.5-flash-lite";
 const llmPrompt = `
 "You are a simple chat agent that assists users with booking events at Clemson University (Go Tigers!). Your responses will be kept brief but informative. Any output must be structured in JSON format, following these rules:
@@ -24,8 +27,9 @@ Here are the events that are available, and the max number of tickets that can b
 
 const Database = require('better-sqlite3');
 
-// Path to shared SQLite database and initialization script.
-const DB_FILE = path.join(__dirname, '..', '..', 'shared-db', 'database.sqlite');
+// Path to shared SQLite database and initialization script, allow override for tests.
+const DEFAULT_DB = path.join(__dirname, '..', '..', 'shared-db', 'database.sqlite');
+const DB_FILE = process.env.TIGERTIX_DB_PATH || DEFAULT_DB;
 const INIT_SQL = path.join(__dirname, '..', '..', 'shared-db', 'init.sql');
 
 let db = null;
@@ -159,7 +163,17 @@ const purchaseTickets = (eventId, qty) => {
 
 const generateResponse = async (userMsg) => {
   try {
-    const events = await fetch("http://localhost:6001/api/events").then((res) => { return res.json() });
+    if (!_fetch) {
+      _fetch = (await import('node-fetch')).default;
+    }
+    if (!ai) {
+      const genai = await import('@google/genai');
+      const { GoogleGenAI, Type: _Type } = genai;
+      Type = _Type;
+      ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+    }
+
+    const events = await _fetch("http://localhost:6001/api/events").then((res) => res.json());  
     const availEvents = JSON.stringify(events);  
 
     const request = userMsg;
@@ -225,14 +239,14 @@ const generateResponse = async (userMsg) => {
 
 const processLlm = async (msg) => {
   try {
-    // should accept RAW/txt, not a structured json input!
+    // Accept raw text input; this endpoint is not intended for structured JSON payloads.
     const userMsg = msg.toString();
 
     const llmResponse = await generateResponse(userMsg);
 
     return llmResponse;
   } catch (err) {
-    throw(err);
+    throw err;
   }
 }
 

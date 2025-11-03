@@ -15,11 +15,18 @@ app.use('/api/admin', routes);
 
 // error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.statusCode || 500).send(err.message || "The server encountered an error!");
+  console.error(err && err.stack ? err.stack : err);
+  res.status(err && err.statusCode ? err.statusCode : 500).send(
+    (err && err.message) || 'The server encountered an error!'
+  );
 });
 
-const PORT = 5001;
-app.listen(PORT, async () => {
-  console.log(`Admin service running on http://localhost:${PORT}`);
-});
+// Export app for testing; only listen when run directly
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.ADMIN_PORT || 5001;
+  app.listen(PORT, async () => {
+    console.log(`Admin service running on http://localhost:${PORT}`);
+  });
+}
