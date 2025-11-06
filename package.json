@@ -1,0 +1,25 @@
+{
+  "name": "cpsc3720-tigertix",
+  "version": "1.0.0",
+  "description": "Clean, setup, and run the backend by navigating to the \"backend\" folder and executing the following commands: ```sh # install the node modules npm install",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GCPins/cpsc3720-tigertix.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GCPins/cpsc3720-tigertix/issues"
+  },
+  "homepage": "https://github.com/GCPins/cpsc3720-tigertix#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.0"
+  }
+}
