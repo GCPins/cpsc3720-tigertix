@@ -82,26 +82,16 @@ const ChatbotWidget = ( { setAppEvents } ) => {
 
     recognition.onresult = async (event) => {
       const text = event.results[0][0].transcript;
-      addMessage('user', text);
-
-      // --- Placeholder for LLM parse POST ---
-      /*
+      // Use same flow as typed input so speech and text behave identically
+      // (sendTextMessage accepts either an Event or a raw string).
       try {
-        const parseRes = await fetch('http://localhost:6001/api/llm/parse', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-        const parseData = await parseRes.json();
-        console.log('Parsed user command:', parseData); // { event, tickets, intent }
+        sendTextMessage(text);
       } catch (err) {
-        console.error('LLM parse API error:', err);
+        console.error('Speech handling error:', err);
+        // Fallback: show what user said and echo a friendly reply.
+        addMessage('user', text);
+        addMessage('bot', `🤖 Got it! You said: "${text}".`);
       }
-      */
-
-      // --- Fallback reply if LLM integration is unavailable ---
-      const hardCodedReply = `🤖 Got it! You said: "${text}".`;
-      addMessage('bot', hardCodedReply);
     };
 
     recognition.onerror = (err) => {
@@ -158,9 +148,9 @@ const ChatbotWidget = ( { setAppEvents } ) => {
 
   // --- Send a text message from user ---
   // Use promise chaining to send message and handle response succinctly
-  const sendTextMessage = (ev) => {
-    if (ev && ev.preventDefault) ev.preventDefault();
-    const text = (inputText || '').trim();
+  const sendTextMessage = (evOrText) => {
+    if (evOrText && evOrText.preventDefault) evOrText.preventDefault();
+    const text = typeof evOrText === 'string' ? evOrText.trim() : (inputText || '').trim();
     if (!text || sending) return;
 
     addMessage('user', text);
@@ -208,7 +198,10 @@ const ChatbotWidget = ( { setAppEvents } ) => {
           .then((data) => ({ res, data }))
       )
       .then(({ res, data }) => {
-        data = JSON.parse(data);
+        // res.json() may already have returned a parsed object; handle string/object safely
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch (e) { /* leave as string */ }
+        }
         let reply = 'Assistant unavailable.';
         if (res && res.ok) {
           if (data == null) reply = 'No reply from assistant.';
