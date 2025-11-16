@@ -12,12 +12,14 @@ const getPasswordHash = async (plaintextPassword) => {
 };
 
 const comparePassword = async (plaintextPassword, expectedHash) => {
+  // Do not log plaintext passwords or hashes in production.
   const match = await bcrypt.compare(plaintextPassword, expectedHash);
   return match;
 }
 
 require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || 'PLACEHOLDER_JWT_PRIVKEY_101010'; 
 
 console.log(
   "GEMINI_KEY:",
@@ -266,11 +268,13 @@ const processLlm = async (msg) => {
 }
 
 const ensureUserRegSchema = async (userData) => {
+  console.log(userData);
   if (!userData) {
     return false;
   }
 
   const { email, password, firstName, lastName } = userData;
+  console.log(email, password, firstName, lastName);
 
   if (!email || typeof email !== 'string' || !password || typeof password !== 'string' ||
       !firstName || typeof firstName !== 'string' || !lastName || typeof lastName !== 'string') {
@@ -295,7 +299,7 @@ const ensureUserLogSchema = async (credentials) => {
 }
 
 const modelRegisterUser = async (userData) => {
-  if (!ensureUserRegSchema(userData)) {
+  if (!userData || !ensureUserRegSchema(userData)) {
     throw new Error('The provided request was invalid - please confirm that all required fields are included in the correct format.');
   }
 
@@ -315,16 +319,35 @@ const modelLoginUser = async (credentials) => {
     throw new Error('The provided login request was invalid - please confirm that all required fields are included in the correct format.');
   }
 
-  const userPassHash = await db.get(`SELECT password_hash FROM User WHERE email = ?`, credentials.email);
-  const passwordMatch = userPassHash ? await comparePassword(credentials.password, userPassHash) : false;
+  const userPassHash = await db.prepare(`SELECT password_hash FROM User WHERE email = ?`).get(credentials.email);
+  const passwordMatch = userPassHash ? await comparePassword(credentials.password, userPassHash.password_hash) : false;
 
   if (!passwordMatch) {
     throw new Error('Invalid email or password.');
   }
-
-  userTok = jwt.sign({ email: credentials.email }, 'PLACEHOLDER_SECRET_KEY_101010', { expiresIn: '30m' });
+  const userTok = jwt.sign({ email: credentials.email }, JWT_PRIVATE_KEY, { expiresIn: '30m' });
 
   return userTok;
 };
 
-module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser };
+const verifyJWTToken = async (req, res, next) => {
+  // Accept token from Authorization header in format 'Bearer <token>' or raw token
+  let token = req.headers['authorization'] || req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({ error: 'Access Denied: Authorization token not provided' });
+  }
+
+  if (typeof token === 'string' && token.toLowerCase().startsWith('bearer ')) {
+    token = token.slice(7).trim();
+  }
+
+  try {
+    const _decoded = jwt.verify(token, JWT_PRIVATE_KEY);
+    req.verifiedUser = _decoded;
+    return next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Access Denied: Invalid Authentication Token was provided' });
+  }
+};
+
+module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser, verifyJWTToken };

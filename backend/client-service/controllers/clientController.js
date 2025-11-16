@@ -1,4 +1,4 @@
-const { getEvents, purchaseTickets: modelPurchaseTickets, processLlm } = require('../models/clientModel.js');
+const { getEvents, purchaseTickets: modelPurchaseTickets, processLlm, modelLoginUser, modelRegisterUser } = require('../models/clientModel.js');
 
 /**
  * @function listEvents
@@ -79,8 +79,7 @@ const registerUser = async(req, res, next) => {
 const loginUser = async(req, res, next) => {
   try {
     const logRes = await modelLoginUser(req.body);
-    // Login logic here
-    res.status(200).json({ message: 'User logged in successfully', token: logRes.token });
+    res.status(200).json({ message: 'User logged in successfully', token: logRes });
   } catch (err) {
     next(err);
   }
