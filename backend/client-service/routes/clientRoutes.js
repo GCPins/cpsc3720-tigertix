@@ -5,5 +5,7 @@ const { listEvents, purchaseTickets, parseLlm } = require('../controllers/client
 router.get('/events', listEvents);
 router.post('/events/:id/purchase', purchaseTickets);
 router.post('/llm/parse', parseLlm);
+router.post('/register', registerUser);
+router.post('/login', loginUser);
 
 module.exports = router;

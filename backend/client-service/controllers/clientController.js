@@ -65,4 +65,25 @@ const parseLlm = async(req, res, next) => {
   }
 }
 
-module.exports = { listEvents, purchaseTickets, parseLlm };
+const registerUser = async(req, res, next) => {
+  try {
+    // Registration logic here
+    const regRes = await modelRegisterUser(req.body);
+
+    res.status(201).json({ message: 'User registered successfully', userId: regRes.userId });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const loginUser = async(req, res, next) => {
+  try {
+    const logRes = await modelLoginUser(req.body);
+    // Login logic here
+    res.status(200).json({ message: 'User logged in successfully', token: logRes.token });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listEvents, purchaseTickets, parseLlm, registerUser, loginUser };

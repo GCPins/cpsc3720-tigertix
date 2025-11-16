@@ -250,4 +250,14 @@ const processLlm = async (msg) => {
   }
 }
 
-module.exports = { getEvents, purchaseTickets, processLlm };
+const modelRegisterUser = async (userData) => {
+  // Simulate user registration logic
+  return { userId: 12345 };
+};
+
+const modelLoginUser = async (credentials) => {
+  // Simulate user login logic
+  return { token: 'abcde-12345' };
+};
+
+module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser };
