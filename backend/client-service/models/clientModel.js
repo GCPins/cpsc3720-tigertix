@@ -4,6 +4,8 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
+const jwt = require('jsonwebtoken');
+
 const getPasswordHash = async (plaintextPassword) => {
   const hash = await bcrypt.hash(plaintextPassword, saltRounds);
   return hash;
@@ -314,15 +316,15 @@ const modelLoginUser = async (credentials) => {
   }
 
   const userPassHash = await db.get(`SELECT password_hash FROM User WHERE email = ?`, credentials.email);
-
   const passwordMatch = userPassHash ? await comparePassword(credentials.password, userPassHash) : false;
 
   if (!passwordMatch) {
     throw new Error('Invalid email or password.');
   }
 
-  // placeholder
-  return { token: 'abcde-12345' };
+  userTok = jwt.sign({ email: credentials.email }, 'PLACEHOLDER_SECRET_KEY_101010', { expiresIn: '30m' });
+
+  return userTok;
 };
 
 module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser };
