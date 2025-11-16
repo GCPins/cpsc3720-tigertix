@@ -85,7 +85,7 @@ const ensureSchema = () => {
     // Re-throw unexpected DB error to be handled upstream.
     throw e;
   }
-};
+}
 
 /**
  * @function getEvents
@@ -112,7 +112,7 @@ const getEvents = () => {
   } catch (e) {
     throw new Error('Database error while fetching events');
   }
-};
+}
 
 /**
  * @function purchaseTickets
@@ -176,7 +176,7 @@ const purchaseTickets = (eventId, qty) => {
     // Re-throw so controller middleware can log/return error properly.
     throw e;
   }
-};
+}
 
 const generateResponse = async (userMsg) => {
   try {
@@ -311,7 +311,7 @@ const modelRegisterUser = async (userData) => {
   const result = await createUserStmt.run(userData.email, hashedPassword, userData.firstName, userData.lastName);
 
   return { userId: result.lastInsertRowid };
-};
+}
 
 const modelLoginUser = async (credentials) => {
   // Simulate user login logic
@@ -328,7 +328,34 @@ const modelLoginUser = async (credentials) => {
   const userTok = jwt.sign({ email: credentials.email }, JWT_PRIVATE_KEY, { expiresIn: '30m' });
 
   return userTok;
-};
+}
+
+const modelGetUserProfile = async (reqBody, requesterEmail) => {
+  // Ensure email is valid
+  if (!reqBody || !reqBody.email || typeof reqBody.email !== 'string') {
+    throw new Error('Invalid email provided for profile retrieval.');
+  }
+  const email = reqBody.email;
+
+  // If a requesterEmail is provided, enforce that the requester is asking for their own profile.
+  if (requesterEmail && typeof requesterEmail === 'string' && requesterEmail !== email) {
+    // Do not leak whether the profile exists; respond with a generic authorization error.
+    const err = new Error('Unauthorized profile access attempt.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const userProfile = await db.prepare(`
+      SELECT email, fname AS firstName, lname AS lastName
+      FROM User
+      WHERE email = ?`).get(email);
+
+  if (!userProfile) {
+    throw new Error('User profile not found.');
+  }
+
+  return userProfile;
+}
 
 const verifyJWTToken = async (req, res, next) => {
   // Accept token from Authorization header in format 'Bearer <token>' or raw token
@@ -348,6 +375,6 @@ const verifyJWTToken = async (req, res, next) => {
   } catch (err) {
     return res.status(401).json({ error: 'Access Denied: Invalid Authentication Token was provided' });
   }
-};
+}
 
-module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser, verifyJWTToken };
+module.exports = { getEvents, purchaseTickets, processLlm, modelRegisterUser, modelLoginUser, verifyJWTToken, modelGetUserProfile };

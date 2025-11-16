@@ -1,4 +1,4 @@
-const { getEvents, purchaseTickets: modelPurchaseTickets, processLlm, modelLoginUser, modelRegisterUser } = require('../models/clientModel.js');
+const { getEvents, purchaseTickets: modelPurchaseTickets, processLlm, modelLoginUser, modelRegisterUser, modelGetUserProfile } = require('../models/clientModel.js');
 
 /**
  * @function listEvents
@@ -53,7 +53,7 @@ const purchaseTickets = async (req, res, next) => {
     // Pass unexpected errors to centralized error middleware.
     next(e);
   }
-};
+}
  
 const parseLlm = async(req, res, next) => {
   try {
@@ -85,4 +85,15 @@ const loginUser = async(req, res, next) => {
   }
 }
 
-module.exports = { listEvents, purchaseTickets, parseLlm, registerUser, loginUser };
+const getUserProfile = async(req, res, next) => {
+  try {
+    // Pass both the requested email and the authenticated user's email so the model
+    // can enforce that users only retrieve their own profiles.
+    const profile = await modelGetUserProfile(req.body, req.verifiedUser.email);
+    res.status(200).json(profile);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listEvents, purchaseTickets, parseLlm, registerUser, loginUser, getUserProfile };
