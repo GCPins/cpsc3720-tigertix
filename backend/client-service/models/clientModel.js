@@ -1,6 +1,19 @@
 const path = require('path');
 const fs = require('fs');
 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
+const getPasswordHash = async (plaintextPassword) => {
+  const hash = await bcrypt.hash(plaintextPassword, saltRounds);
+  return hash;
+};
+
+const comparePassword = async (plaintextPassword, expectedHash) => {
+  const match = await bcrypt.compare(plaintextPassword, expectedHash);
+  return match;
+}
+
 require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
@@ -250,13 +263,65 @@ const processLlm = async (msg) => {
   }
 }
 
+const ensureUserRegSchema = async (userData) => {
+  if (!userData) {
+    return false;
+  }
+
+  const { email, password, firstName, lastName } = userData;
+
+  if (!email || typeof email !== 'string' || !password || typeof password !== 'string' ||
+      !firstName || typeof firstName !== 'string' || !lastName || typeof lastName !== 'string') {
+    return false;
+  }
+
+  return true;
+}
+
+const ensureUserLogSchema = async (credentials) => {
+  if (!credentials) {
+    return false;
+  }
+
+  const { email, password } = credentials;
+
+  if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    return false;
+  }
+
+  return true;
+}
+
 const modelRegisterUser = async (userData) => {
-  // Simulate user registration logic
-  return { userId: 12345 };
+  if (!ensureUserRegSchema(userData)) {
+    throw new Error('The provided request was invalid - please confirm that all required fields are included in the correct format.');
+  }
+
+  const hashedPassword = await getPasswordHash(userData.password);
+
+  const createUserStmt = db.prepare(`
+      INSERT INTO User (email, password_hash, fname, lname)
+      VALUES (?, ?, ?, ?)`);
+  const result = await createUserStmt.run(userData.email, hashedPassword, userData.firstName, userData.lastName);
+
+  return { userId: result.lastInsertRowid };
 };
 
 const modelLoginUser = async (credentials) => {
   // Simulate user login logic
+  if (!ensureUserLogSchema(credentials)) {
+    throw new Error('The provided login request was invalid - please confirm that all required fields are included in the correct format.');
+  }
+
+  const userPassHash = await db.get(`SELECT password_hash FROM User WHERE email = ?`, credentials.email);
+
+  const passwordMatch = userPassHash ? await comparePassword(credentials.password, userPassHash) : false;
+
+  if (!passwordMatch) {
+    throw new Error('Invalid email or password.');
+  }
+
+  // placeholder
   return { token: 'abcde-12345' };
 };
 

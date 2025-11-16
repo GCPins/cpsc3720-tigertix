@@ -10,3 +10,13 @@ CREATE TABLE Event (
     event_location TEXT NOT NULL,
     event_tickets_remaining INTEGER NOT NULL
 );
+
+-- USERS
+DROP TABLE IF EXISTS User;
+CREATE TABLE User (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    fname TEXT NOT NULL,
+    lname TEXT NOT NULL
+);

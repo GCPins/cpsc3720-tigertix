@@ -21,5 +21,8 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.10.0"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0"
   }
 }
