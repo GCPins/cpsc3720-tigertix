@@ -20,6 +20,7 @@ const comparePassword = async (plaintextPassword, expectedHash) => {
 require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || 'PLACEHOLDER_JWT_PRIVKEY_101010'; 
+const INTERNAL_JWT_TOKEN = process.env.INTERNAL_JWT || 'PLACEHOLDER_INTERNAL_JWT_42';
 
 console.log(
   "GEMINI_KEY:",
@@ -190,7 +191,13 @@ const generateResponse = async (userMsg) => {
       ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
     }
 
-    const events = await _fetch("http://localhost:6001/api/events").then((res) => res.json());  
+    // add INTERNAL_JWT_TOKEN to req.
+    const events = await _fetch("http://localhost:6001/api/events", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${INTERNAL_JWT_TOKEN}`
+      }
+    }).then((res) => res.json());  
     const availEvents = JSON.stringify(events);  
 
     const request = userMsg;
@@ -366,6 +373,11 @@ const verifyJWTToken = async (req, res, next) => {
 
   if (typeof token === 'string' && token.toLowerCase().startsWith('bearer ')) {
     token = token.slice(7).trim();
+  }
+
+  if (token == INTERNAL_JWT_TOKEN) {
+    req.verifiedUser = {"email": "dummyemail@internal.api"};
+    return next();
   }
 
   try {
