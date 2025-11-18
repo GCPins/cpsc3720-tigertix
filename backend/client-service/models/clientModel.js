@@ -20,7 +20,7 @@ const comparePassword = async (plaintextPassword, expectedHash) => {
 require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || 'PLACEHOLDER_JWT_PRIVKEY_101010'; 
-const INTERNAL_JWT_TOKEN = process.env.INTERNAL_JWT || 'PLACEHOLDER_INTERNAL_JWT_42';
+const INTERNAL_JWT_TOKEN = process.env.INTERNAL_JWT_TOKEN || 'PLACEHOLDER_INTERNAL_JWT_42';
 
 console.log(
   "GEMINI_KEY:",
