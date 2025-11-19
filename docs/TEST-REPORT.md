@@ -24,6 +24,7 @@ Date: 2025-11-02
   - Accessibility live region updates on purchase: PASS
   - Chatbot toggle and mocked LLM error message: PASS
   - Totals: 4 tests (3 suites) — all passed
+![alt text](image.png)
 
 ## Manual Test Cases and Results
 
