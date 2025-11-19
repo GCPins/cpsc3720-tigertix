@@ -698,6 +698,9 @@ function App() {
         });
         const registerBody = await registerRes.json().catch(() => ({}));
         if (!registerRes.ok) {
+          if (registerBody.error && registerBody.error.toLowerCase().includes("unique")) {
+            throw new Error("Account already exists! Please login instead.");
+          }
           throw new Error(registerBody.error || registerBody.message || 'Unable to register.');
         }
         await loginUser(email, password);
