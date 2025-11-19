@@ -1,6 +1,6 @@
 # TigerTix Testing Strategy
 
-This document describes the comprehensive testing approach for TigerTix, covering unit, integration, and end-to-end (E2E) testing across microservices, the React frontend, LLM-driven features, voice UX, accessibility, and database concurrency.
+This document describes the comprehensive testing approach for TigerTix, covering unit, integration, and end-to-end (E2E) testing across microservices, the React frontend, user authentication, LLM-driven features, voice UX, accessibility, and database concurrency.
 
 ## Scope
 

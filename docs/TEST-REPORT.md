@@ -19,12 +19,13 @@ Date: 2025-11-02
   - Authentication tests: PASS  (registration, login, 
   JWT/expected routes, expired token)
   - Totals: 16 tests (3 suites) — all passed
+![alt text](image.png)
 - Frontend (React Testing Library + Jest)
   - App renders and loads events: PASS
   - Accessibility live region updates on purchase: PASS
   - Chatbot toggle and mocked LLM error message: PASS
   - Totals: 4 tests (3 suites) — all passed
-![alt text](image.png)
+![alt text](image-1.png)
 
 ## Manual Test Cases and Results
 
