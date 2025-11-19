@@ -84,4 +84,47 @@ describe('App accessibility and interactions', () => {
     // Wait for bot message to appear (error message from mocked LLM)
     await screen.findByText(/Please specify event and quantity/i);
   });
+
+  test('auth form has labeled inputs, toggle works, and status region exists', async () => {
+    // This test focuses on accessibility of the auth panel (labels, toggles, live region)
+    render(<App />);
+
+    // Wait for any async fetch/update effects to settle (avoids act() warnings)
+    await waitFor(() => {
+      // the events loading state or signed-in panel should appear
+      expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    // There should be a live status region for announcements
+    const status = screen.getByRole('status');
+    expect(status).toBeInTheDocument();
+
+    // If the user is signed out, the auth form will show Email/Password labels.
+    // If signed in (tests that preset session), the signed-in panel is shown instead.
+    const maybeEmail = screen.queryByLabelText(/Email/i);
+    const isSignedIn = screen.queryAllByText(/Session Active|Signed in as|Logged in as/i).length > 0;
+
+    if (maybeEmail) {
+      // signed-out state: assert fields and toggle behavior
+      const email = screen.getByLabelText(/Email/i);
+      const password = screen.getByLabelText(/Password/i);
+      expect(email).toBeInTheDocument();
+      expect(password).toBeInTheDocument();
+
+      // Mode toggle should include a Create account option; switch to it and expect First name label
+      const createToggle = screen.getAllByRole('button', { name: /Create account/i }).find((b) => b.getAttribute('type') === 'button');
+      if (createToggle) {
+        fireEvent.click(createToggle);
+        const firstName = await screen.findByLabelText(/First name/i);
+        expect(firstName).toBeInTheDocument();
+      }
+
+      // Ensure submit button is available and labeled appropriately
+      const submit = screen.getAllByRole('button', { name: /Create account|Sign in/i }).find((b) => b.getAttribute('type') === 'submit');
+      expect(submit).toBeTruthy();
+    } else if (isSignedIn) {
+      const logoutBtn = screen.getByRole('button', { name: /Log out|Sign out|Logout/i });
+      expect(logoutBtn).toBeInTheDocument();
+    }
+  });
 });

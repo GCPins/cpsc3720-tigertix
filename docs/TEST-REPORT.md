@@ -1,6 +1,6 @@
 # TigerTix Test Report
 
-Date: 2025-11-02
+Date: 2025-11-19
 
 ## Automated Execution Details
 
@@ -24,7 +24,8 @@ Date: 2025-11-02
   - App renders and loads events: PASS
   - Accessibility live region updates on purchase: PASS
   - Chatbot toggle and mocked LLM error message: PASS
-  - Totals: 4 tests (3 suites) — all passed
+  - Authentication functionality and accessibility: PASS
+  - Totals: 8 tests (4 suites) — all passed
 ![alt text](image-1.png)
 
 ## Manual Test Cases and Results
