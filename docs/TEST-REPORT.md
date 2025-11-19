@@ -16,7 +16,9 @@ Date: 2025-11-02
 - Backend (Jest + Supertest)
   - Admin service: PASS (event creation valid/invalid)
   - Client service: PASS (list events, purchases, conflicts, concurrency), PASS (mocked LLM parse)
-  - Totals: 7 tests (2 suites) — all passed
+  - Authentication tests: PASS  (registration, login, 
+  JWT/expected routes, expired token)
+  - Totals: 16 tests (3 suites) — all passed
 - Frontend (React Testing Library + Jest)
   - App renders and loads events: PASS
   - Accessibility live region updates on purchase: PASS
@@ -58,5 +60,14 @@ Record actual outcomes and any issues while executing the steps below on a runni
   1) With capacity N on an event, simultaneously attempt >N purchases.
   2) Verify only N successes; remaining are conflicts; capacity never negative.
 - Expected: Consistent state, no deadlocks.
+- Actual: [record]
+- Notes/Bugs: [record]
+
+### Registration & Sign In
+- Steps:
+  1) Navigate to registration page, enter valid email, password, first name, and last name, and submit registration
+  2) Navigate to sign in page and enter the same email and password
+  to sign in.
+- Expected: Tickets and chatbot are now available to user.
 - Actual: [record]
 - Notes/Bugs: [record]

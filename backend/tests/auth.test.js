@@ -139,4 +139,29 @@ describe('Authentication + Protected Routes', () => {
 
     expect(res.statusCode).toBe(403); // Forbidden
   });
+  // -------------------------------------------------------------
+  // EXPIRED TOKEN TEST
+  // -------------------------------------------------------------
+  const jwt = require('jsonwebtoken');
+
+  test('GET /api/profile → fails with expired JWT', async () => {
+  const email = 'expired@clemson.edu';
+  const token = await registerAndLogin(email);
+
+  // create an already expired token
+  const expiredToken = jwt.sign(
+    { email },
+    process.env.JWT_SECRET || 'PLACEHOLDER_JWT_PRIVKEY_101010',
+    { expiresIn: '-1s' } // expired 1 second ago
+  );
+
+  const res = await request(app)
+    .get('/api/profile')
+    .set('Authorization', `Bearer ${expiredToken}`)
+    .send({ email });
+
+  expect(res.statusCode).toBe(401);
+  expect(res.body).toHaveProperty('error');
+  expect(res.body.error.toLowerCase()).toContain('invalid authentication');
+  });
 });
