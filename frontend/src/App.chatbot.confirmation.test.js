@@ -1,13 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 
+const TOKEN_KEY = 'tigertix_token';
+const EMAIL_KEY = 'tigertix_email';
+const SESSION_TOKEN = 'chatbot-token';
+
 describe('Chatbot confirmation flow', () => {
   let originalFetch;
-  const events = [
-    { id: 1, name: 'Homecoming Concert', datetime: '2025-12-01T19:00:00Z', location: 'Littlejohn', capacity: 3 },
-  ];
+  let events;
 
   beforeEach(() => {
+    events = [
+      { id: 1, name: 'Homecoming Concert', datetime: '2025-12-01T19:00:00Z', location: 'Littlejohn', capacity: 3 },
+    ];
     // jsdom polyfill for scrollIntoView
     if (!HTMLElement.prototype.scrollIntoView) {
       // eslint-disable-next-line no-extend-native
@@ -15,14 +20,19 @@ describe('Chatbot confirmation flow', () => {
     }
 
     originalFetch = global.fetch;
+    window.sessionStorage.setItem(TOKEN_KEY, SESSION_TOKEN);
+    window.sessionStorage.setItem(EMAIL_KEY, 'chatbot@test.com');
     global.fetch = jest.fn((url, opts = {}) => {
       const u = typeof url === 'string' ? url : '';
       const method = (opts.method || 'GET').toUpperCase();
+      const headers = opts.headers || {};
 
       if (u.includes('/api/events') && method === 'GET') {
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         return Promise.resolve({ ok: true, json: async () => events });
       }
       if (u.includes('/api/llm/parse') && method === 'POST') {
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         // Propose booking 2 tickets for event 1
         return Promise.resolve({
           ok: true,
@@ -30,6 +40,7 @@ describe('Chatbot confirmation flow', () => {
         });
       }
       if (u.includes('/api/events/1/purchase') && method === 'POST') {
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         // Confirm purchase and respond with an updated copy (avoid mutating shared state reference)
         const updated = { ...events[0], capacity: events[0].capacity - 2 };
         return Promise.resolve({ ok: true, json: async () => updated });
@@ -41,6 +52,7 @@ describe('Chatbot confirmation flow', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     jest.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   test('proposes via LLM and confirms purchase on yes', async () => {

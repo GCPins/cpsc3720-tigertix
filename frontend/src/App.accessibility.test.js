@@ -1,9 +1,15 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import App from './App';
 
-const events = [
+const initialEvents = [
   { id: 1, name: 'Homecoming Concert', datetime: '2025-12-01T19:00:00Z', location: 'Littlejohn', capacity: 2 },
 ];
+
+let events;
+
+const TOKEN_KEY = 'tigertix_token';
+const EMAIL_KEY = 'tigertix_email';
+const SESSION_TOKEN = 'access-token';
 
 describe('App accessibility and interactions', () => {
   let originalFetch;
@@ -14,18 +20,23 @@ describe('App accessibility and interactions', () => {
       // eslint-disable-next-line no-extend-native
       HTMLElement.prototype.scrollIntoView = jest.fn();
     }
+    events = initialEvents.map((ev) => ({ ...ev }));
+    window.sessionStorage.setItem(TOKEN_KEY, SESSION_TOKEN);
+    window.sessionStorage.setItem(EMAIL_KEY, 'access@test.com');
     originalFetch = global.fetch;
-    global.fetch = jest.fn((url, opts) => {
-      if (typeof url === 'string' && url.includes('/api/events') && (!opts || opts.method === 'GET')) {
+    global.fetch = jest.fn((url, opts = {}) => {
+      const headers = opts.headers || {};
+      if (typeof url === 'string' && url.includes('/api/events') && (opts.method || 'GET') === 'GET') {
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         return Promise.resolve({ ok: true, json: async () => events });
       }
       if (typeof url === 'string' && url.includes('/api/events/1/purchase')) {
-        // decrement capacity and return updated event
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         events[0] = { ...events[0], capacity: events[0].capacity - 1 };
         return Promise.resolve({ ok: true, json: async () => events[0] });
       }
       if (typeof url === 'string' && url.includes('/api/llm/parse')) {
-        // return JSON string (server passthrough)
+        expect(headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
         return Promise.resolve({
           ok: true,
           json: async () => JSON.stringify({ error: { msg: 'Please specify event and quantity' } }),
@@ -38,6 +49,7 @@ describe('App accessibility and interactions', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     jest.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   test('live status region exists and updates after purchase', async () => {

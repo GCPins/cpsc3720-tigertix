@@ -1,6 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './App.css';
 // const fetch = require('node-fetch').default;
+
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:6001/api';
+const STORAGE_TOKEN_KEY = 'tigertix_token';
+const STORAGE_EMAIL_KEY = 'tigertix_email';
+
+const buildApiUrl = (path) => {
+  const normalizedBase = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${normalizedBase}/${normalizedPath}`;
+};
 
 let modalOpenedOnce = false;
 let confirmationPending = false;
@@ -49,9 +59,9 @@ const formatDatetime = (rawDatetime) => {
 
 /**
  * ChatbotWidget
- * Floating chat assistant with voice input, event listing, and LLM parse/reply integration.
+ * Floating chat assistant with voice input, event listing, LLM parse/reply integration, and JWT-aware fetches.
  */
-const ChatbotWidget = ( { setAppEvents } ) => {
+const ChatbotWidget = ({ setAppEvents, authFetch }) => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -63,11 +73,22 @@ const ChatbotWidget = ( { setAppEvents } ) => {
 
   // --- Load events ---
   useEffect(() => {
-    fetch('http://localhost:6001/api/events')
+    let isCancelled = false;
+    if (!authFetch) return () => {};
+
+    authFetch('/events')
       .then((res) => res.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (!isCancelled) {
+          setEvents(Array.isArray(data) ? data : []);
+        }
+      })
       .catch((err) => console.error('Failed to load events:', err));
-  }, []);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authFetch]);
 
   // --- Setup SpeechRecognition ---
   useEffect(() => {
@@ -152,6 +173,10 @@ const ChatbotWidget = ( { setAppEvents } ) => {
     if (evOrText && evOrText.preventDefault) evOrText.preventDefault();
     const text = typeof evOrText === 'string' ? evOrText.trim() : (inputText || '').trim();
     if (!text || sending) return;
+    if (!authFetch) {
+      addMessage('bot', 'Please sign in before using the assistant.');
+      return;
+    }
 
     addMessage('user', text);
     setInputText('');
@@ -161,16 +186,28 @@ const ChatbotWidget = ( { setAppEvents } ) => {
       if (text.toLowerCase().includes('yes') || text.toLowerCase().includes('confirm')) {
         // purchase confirmed, buy ticket(s) for event with ID = potentialEventId
         // with ticket quantity = potentialEventQuantity
-        fetch(
-          `http://localhost:6001/api/events/${potentialEventId}/purchase`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity: potentialEventQuantity }),
-          }
-        ).then(async (res) => {
-            addMessage('bot', 'Your reservation for ' + potentialEventQuantity + ' tickets to ' + potentialEventName + ' has been confirmed! Thank you for using TigerTix Assistant.');
-        });
+        authFetch(`/events/${potentialEventId}/purchase`, {
+          method: 'POST',
+          body: JSON.stringify({ quantity: potentialEventQuantity }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errBody = await res.json().catch(() => ({}));
+              throw new Error(errBody.error || 'Reservation failed');
+            }
+            addMessage(
+              'bot',
+              'Your reservation for ' +
+                potentialEventQuantity +
+                ' tickets to ' +
+                potentialEventName +
+                ' has been confirmed! Thank you for using TigerTix Assistant.'
+            );
+          })
+          .catch((err) => {
+            console.error(err);
+            addMessage('bot', 'Unable to confirm reservation: ' + err.message);
+          });
         if (setAppEvents) {
           setAppEvents((prevEvents) =>
             prevEvents.map((ev) =>
@@ -186,9 +223,8 @@ const ChatbotWidget = ( { setAppEvents } ) => {
       return;
     }
 
-    fetch('http://localhost:6001/api/llm/parse', {
+    authFetch('/llm/parse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
     })
       .then((res) =>
@@ -321,6 +357,146 @@ const ChatbotWidget = ( { setAppEvents } ) => {
 
 
 /**
+ * AuthPanel
+ * Handles registration, login, and logout UX.
+ */
+const AuthPanel = ({
+  mode,
+  onModeChange,
+  formData,
+  onChange,
+  onSubmit,
+  loading,
+  feedback,
+  user,
+  onLogout,
+}) => {
+  const isRegister = mode === 'register';
+
+  if (user) {
+    return (
+      <section className="auth-panel" aria-live="polite">
+        <div className="auth-panel__signed-in">
+          <div>
+            <p className="auth-panel__status-label">Session Active</p>
+            <p className="auth-panel__status-value">
+              Logged in as <strong>{user.email}</strong>
+            </p>
+          </div>
+          <button type="button" className="auth-panel__logout" onClick={onLogout}>
+            Log out
+          </button>
+        </div>
+        {feedback && (
+          <p className="auth-panel__feedback" role="status">
+            {feedback}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="auth-panel" aria-label="User authentication" aria-live="polite">
+      <div className="auth-panel__toggle" role="tablist" aria-label="Authentication mode">
+        <button
+          type="button"
+          className={mode === 'login' ? 'is-active' : ''}
+          aria-pressed={mode === 'login'}
+          onClick={() => onModeChange('login')}
+        >
+          Sign in
+        </button>
+        <button
+          type="button"
+          className={mode === 'register' ? 'is-active' : ''}
+          aria-pressed={mode === 'register'}
+          onClick={() => onModeChange('register')}
+        >
+          Create account
+        </button>
+      </div>
+
+      <form className="auth-panel__form" onSubmit={onSubmit}>
+        <label className="auth-panel__field">
+          <span>Email</span>
+          <input
+            type="email"
+            name="email"
+            autoComplete="email"
+            required
+            value={formData.email}
+            onChange={onChange}
+          />
+        </label>
+
+        {isRegister && (
+          <div className="auth-panel__grid">
+            <label className="auth-panel__field">
+              <span>First name</span>
+              <input
+                type="text"
+                name="firstName"
+                autoComplete="given-name"
+                required
+                value={formData.firstName}
+                onChange={onChange}
+              />
+            </label>
+            <label className="auth-panel__field">
+              <span>Last name</span>
+              <input
+                type="text"
+                name="lastName"
+                autoComplete="family-name"
+                required
+                value={formData.lastName}
+                onChange={onChange}
+              />
+            </label>
+          </div>
+        )}
+
+        <label className="auth-panel__field">
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            autoComplete={isRegister ? 'new-password' : 'current-password'}
+            required
+            value={formData.password}
+            onChange={onChange}
+          />
+        </label>
+
+        <div className="auth-panel__actions">
+          <button type="submit" disabled={loading}>
+            {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+          </button>
+          <p className="auth-panel__hint">
+            {isRegister ? 'Already registered?' : "Need an account?"}{' '}
+            <button
+              type="button"
+              className="auth-panel__mode-link"
+              onClick={() => onModeChange(isRegister ? 'login' : 'register')}
+            >
+              {isRegister ? 'Sign in here' : 'Register now'}
+            </button>
+          </p>
+        </div>
+      </form>
+
+      {feedback && (
+        <p className="auth-panel__feedback" role="alert">
+          {feedback}
+        </p>
+      )}
+    </section>
+  );
+};
+
+
+/**
  * EventCard
  * Purpose: Present an event's key details and purchase controls in a styled card.
  * @param {Object} props - Component properties.
@@ -377,6 +553,17 @@ const EventCard = ({ event, onPurchase, isLoading }) => {
  * Outputs/Side effects: Fetches events, updates UI state, and exposes announcements to assistive tech.
  */
 function App() {
+  const [authToken, setAuthToken] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authMode, setAuthMode] = useState('login');
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+  });
+  const [authFeedback, setAuthFeedback] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   // Events fetched from the client-service API
   const [events, setEvents] = useState([]);
   // Tracks which event is currently processing a purchase
@@ -385,11 +572,166 @@ function App() {
   const [message, setMessage] = useState('');
   // Loading indicator for the initial events fetch
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const isAuthenticated = Boolean(authToken && currentUser);
+
+  // Restore session from storage on first render
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedToken = window.sessionStorage.getItem(STORAGE_TOKEN_KEY);
+    const storedEmail = window.sessionStorage.getItem(STORAGE_EMAIL_KEY);
+    if (storedToken && storedEmail) {
+      setAuthToken(storedToken);
+      setCurrentUser({ email: storedEmail });
+      setIsLoadingEvents(false);
+    } else {
+      setIsLoadingEvents(false);
+    }
+  }, []);
+
+  const persistSession = useCallback((token, email) => {
+    setAuthToken(token);
+    setCurrentUser({ email });
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem(STORAGE_TOKEN_KEY, token);
+      window.sessionStorage.setItem(STORAGE_EMAIL_KEY, email);
+    }
+  }, []);
+
+  const clearSession = useCallback((notice) => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    setEvents([]);
+    setLoadingId(null);
+    setIsLoadingEvents(false);
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+      window.sessionStorage.removeItem(STORAGE_EMAIL_KEY);
+    }
+    if (notice) {
+      setMessage(notice);
+    }
+  }, []);
+
+  const handleUnauthorized = useCallback(
+    (notice = 'Your session has expired. Please sign in again.') => {
+      clearSession(notice);
+    },
+    [clearSession]
+  );
+
+  const authorizedFetch = useCallback(
+    async (path, options = {}) => {
+      if (!authToken) {
+        throw new Error('Missing authentication token');
+      }
+
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${authToken}`,
+      };
+
+      if (options.body && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(buildApiUrl(path), { ...options, headers });
+      if (response.status === 401) {
+        handleUnauthorized();
+        throw new Error('Session expired');
+      }
+      return response;
+    },
+    [authToken, handleUnauthorized]
+  );
+
+  const handleAuthFieldChange = (event) => {
+    const { name, value } = event.target;
+    setAuthForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const switchAuthMode = (mode) => {
+    setAuthMode(mode);
+    setAuthFeedback('');
+  };
+
+  const loginUser = async (email, password) => {
+    const response = await fetch(buildApiUrl('/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Unable to sign in.');
+    }
+    if (!data.token) {
+      throw new Error('Login response missing token.');
+    }
+    persistSession(data.token, email);
+    setMessage(`Signed in as ${email}.`);
+  };
+
+  const handleAuthSubmit = async (event) => {
+    event.preventDefault();
+    setAuthFeedback('');
+    setAuthLoading(true);
+
+    try {
+      const email = authForm.email.trim();
+      const password = authForm.password;
+
+      if (!email || !password) {
+        throw new Error('Please provide both email and password.');
+      }
+
+      if (authMode === 'register') {
+        const firstName = authForm.firstName.trim();
+        const lastName = authForm.lastName.trim();
+        if (!firstName || !lastName) {
+          throw new Error('Please provide your first and last name.');
+        }
+
+        const registerRes = await fetch(buildApiUrl('/register'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, firstName, lastName }),
+        });
+        const registerBody = await registerRes.json().catch(() => ({}));
+        if (!registerRes.ok) {
+          throw new Error(registerBody.error || registerBody.message || 'Unable to register.');
+        }
+        await loginUser(email, password);
+        setAuthFeedback('Account created! You are now signed in.');
+      } else {
+        await loginUser(email, password);
+        setAuthFeedback('Signed in successfully.');
+      }
+
+      setAuthForm((prev) => ({ ...prev, password: '' }));
+    } catch (err) {
+      setAuthFeedback(err.message || 'Unable to authenticate. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearSession('You have been signed out.');
+    setAuthFeedback('');
+    setAuthMode('login');
+  };
 
   useEffect(() => {
-    let isCancelled = false;
+    if (!authToken) {
+      setEvents([]);
+      setIsLoadingEvents(false);
+      return;
+    }
 
-    fetch('http://localhost:6001/api/events')
+    let isCancelled = false;
+    setIsLoadingEvents(true);
+
+    authorizedFetch('/events')
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load events: ${res.statusText}`);
@@ -416,7 +758,7 @@ function App() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [authToken, authorizedFetch]);
 
   /**
    * buyTicket
@@ -425,16 +767,16 @@ function App() {
    * @returns {Promise<void>} Updates component state and announces success/failure.
    */
   const buyTicket = async (eventId) => {
+    if (!authToken) {
+      setMessage('Please sign in before purchasing tickets.');
+      return;
+    }
     setLoadingId(eventId);
     try {
-      const res = await fetch(
-        `http://localhost:6001/api/events/${eventId}/purchase`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantity: 1 }),
-        }
-      );
+      const res = await authorizedFetch(`/events/${eventId}/purchase`, {
+        method: 'POST',
+        body: JSON.stringify({ quantity: 1 }),
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const msg = 'Purchase failed: ' + (err.error || res.statusText);
@@ -453,8 +795,10 @@ function App() {
       }
     } catch (e) {
       console.error(e);
-      setMessage('Network error during purchase');
-      alert('Network error during purchase');
+      if (e.message !== 'Session expired') {
+        setMessage('Network error during purchase');
+        alert('Network error during purchase');
+      }
     } finally {
       setLoadingId(null);
     }
@@ -480,12 +824,27 @@ function App() {
         </div>
 
         <section className="events-section" aria-labelledby="events-heading">
+          <AuthPanel
+            mode={authMode}
+            onModeChange={switchAuthMode}
+            formData={authForm}
+            onChange={handleAuthFieldChange}
+            onSubmit={handleAuthSubmit}
+            loading={authLoading}
+            feedback={authFeedback}
+            user={currentUser}
+            onLogout={handleLogout}
+          />
           <div className="events-section__header">
             <h2 id="events-heading">Upcoming events</h2>
             <p>Reserve a spot and cheer on your fellow Tigers.</p>
           </div>
 
-          {isLoadingEvents ? (
+          {!isAuthenticated ? (
+            <div className="events-section__state locked-state" role="status">
+              Sign in to use the TigerTix Assistant for natural-language and voice bookings.
+            </div>
+          ) : isLoadingEvents ? (
             <p className="events-section__state" role="status">
               Loading events…
             </p>
@@ -507,7 +866,7 @@ function App() {
             </div>
           )}
         </section>
-        <ChatbotWidget setAppEvents={setEvents} />
+        {isAuthenticated ? <ChatbotWidget setAppEvents={setEvents} authFetch={authorizedFetch} /> : null}
       </main>
     </div>
   );
