@@ -17,14 +17,14 @@ const comparePassword = async (plaintextPassword, expectedHash) => {
   return match;
 }
 
-require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
+// require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || 'PLACEHOLDER_JWT_PRIVKEY_101010'; 
 const INTERNAL_JWT_TOKEN = process.env.INTERNAL_JWT_TOKEN || 'PLACEHOLDER_INTERNAL_JWT_42';
 
 console.log(
   "GEMINI_KEY:",
-  GEMINI_KEY ? "FOUND" : "NOT FOUND - set the GEMINI_API_KEY environment variable."
+  GEMINI_KEY ? "FOUND" : "NOT FOUND - set the GEMINI_API_KEY environment variable!"
 );
 
 // LLM deps (node-fetch, @google/genai) are loaded lazily to avoid ESM parsing issues in tests

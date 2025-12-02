@@ -1,4 +1,5 @@
 const path = require('path');
+
 // Allow tests to override DB path via env var
 const DEFAULT_DB = path.join(__dirname, '..', '..', 'shared-db', 'database.sqlite');
 const DB_FILE = process.env.TIGERTIX_DB_PATH || DEFAULT_DB;
