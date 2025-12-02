@@ -17,13 +17,13 @@
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^1.28.0",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"
-  }
-  ,
+  },
   "devDependencies": {
     "jest": "^29.7.0",
     "supertest": "^7.0.0"
