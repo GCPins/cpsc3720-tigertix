@@ -2,6 +2,9 @@
 ### Backend
 Clean, setup, and run the backend by navigating to the "backend" folder and executing the following commands:
 ```sh
+# chdir to backend directory
+cd backend
+
 # install the node modules
 npm install
 
@@ -17,6 +20,9 @@ Or, just run it with the `npm run start` command after the node modules have bee
 ### Frontend
 Run the frontend by navigating to the "frontend" folder and executing the following command:
 ```sh
+# chdir to frontend directory
+cd frontend
+
 # install the node modules
 npm install
 
