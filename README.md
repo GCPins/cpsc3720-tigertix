@@ -120,9 +120,9 @@ npx playwright test
 
 | Name | Role |
 | :--- | :--- |
-| Aarav Chowbey | Developer, Tester |
-| George Atkinson | Developer, Tester |
-| John Suchanek | Developer, Tester |
+| Aarav Chowbey | Frontend Developer, Tester |
+| George Atkinson | Backend Developer, Tester |
+| John Suchanek | Backend Developer, Tester |
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
