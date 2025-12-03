@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const routes = require('./routes/clientRoutes.js');
+const dotenv = require('dotenv');
 
 app.use(cors());
 app.use(express.json());

@@ -17,6 +17,9 @@ const comparePassword = async (plaintextPassword, expectedHash) => {
   return match;
 }
 
+if (fs.existsSync(path.join(__dirname, '..', '..', '.env') )) {
+  require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
+};
 // require('dotenv').config({ path: path.join(__dirname, '../.env') }); 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || 'PLACEHOLDER_JWT_PRIVKEY_101010'; 

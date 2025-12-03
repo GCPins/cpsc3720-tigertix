@@ -3,7 +3,8 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 const DB_FILE = path.join(__dirname, '..', 'shared-db/database.sqlite');
-const SETUP_FILE = path.join(__dirname, '..', 'shared-db/init.sql');
+// const SETUP_FILE = path.join(__dirname, '..', 'shared-db/init.sql');
+const SETUP_FILE = path.join(__dirname, './init.sql');
 
 const db = new Database(DB_FILE);
 
