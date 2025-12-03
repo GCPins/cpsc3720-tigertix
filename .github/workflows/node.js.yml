@@ -28,6 +28,6 @@ jobs:
         cache: 'npm'
     - run: npm install
     - run: cd backend && npm install
-    - run: npm run test
-    - run: cd ../frontend && npm install
-    - run: npm run test
+    - run: cd backend && npm run test
+    - run: cd frontend && npm install
+    - run: cd frontend && npm run test
