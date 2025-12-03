@@ -28,6 +28,7 @@ jobs:
         cache: 'npm'
     - run: npm install
     - run: cd backend && npm install && npm run setup
+    - run: cp backend/admin-service/init.sql backend/shared-db
     - run: cd backend && npm run test
     - run: cd frontend && npm install
     - run: cd frontend && npm run test
