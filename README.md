@@ -1,5 +1,4 @@
 # TigerTix
-## Sprint 1
 ### Backend
 Clean, setup, and run the backend by navigating to the "backend" folder and executing the following commands:
 ```sh
