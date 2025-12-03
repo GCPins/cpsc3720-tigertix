@@ -5,6 +5,9 @@ Clean, setup, and run the backend by navigating to the "backend" folder and exec
 # install the node modules
 npm install
 
+# setup database
+npm run setup
+
 # run the admin and client backends
 npm run all
 ```
